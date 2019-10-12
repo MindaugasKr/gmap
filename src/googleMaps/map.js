@@ -5,7 +5,7 @@ import Cluster from './Cluster';
 import { susolvkaCoords } from '../fakeData';
 import supercluster from 'points-cluster';
 
-class SimpleMap extends Component {
+class GoogleMap extends Component {
   static defaultProps = {
     center: {
       lat: 59.95,
@@ -16,7 +16,9 @@ class SimpleMap extends Component {
 
   state = {
     mapProps: null,
-    getClusters: null
+    getClusters: null,
+    center: null,
+    zoom: null
   }
 
   componentDidMount() {
@@ -47,17 +49,55 @@ class SimpleMap extends Component {
     }
   }
 
-  renderMarkers = markerList => markerList.map((marker, index) => {
-    const { numPoints, wx, wy } = marker;
-    return numPoints === 1
-      ? <Marker key={index} lat={wy} lng={wx} />
-      : <Cluster key={index} lat={wy} lng={wx} numPoints={numPoints} />
+  renderMarkers = clusteredMarkers => clusteredMarkers.map((marker) => {
+    const { numPoints, wx, wy, points } = marker;
+
+    if (numPoints === 1) {
+      const { markersData } = this.props;
+      const { id } = points[0];
+      const { url } = markersData[id];
+
+      return <Marker
+        key={id}
+        lat={wy}
+        lng={wx}
+        url={url}
+      />
+    } else {
+      const id = `${numPoints}_${points[0].id}`;
+
+      return <Cluster
+        key={id}
+        lat={wy}
+        lng={wx}
+        numPoints={numPoints}
+      />;
+    }
   })
 
-  onChange = mapProps => this.setState({ mapProps });
+  handleChange = mapProps => {
+    const { zoom } = mapProps;
+    this.setState({
+      mapProps,
+      zoom
+    })
+  };
+
+  handleChildClick = (id, childProps) => {
+    const { url } = childProps;
+    if (url) {
+      window.location.assign(url);
+    } else {
+      const { lat, lng } = childProps;
+      this.setState({
+        center: [lat, lng],
+        zoom: 14
+      })
+    }
+  }
 
   render() {
-    const { mapProps, getClusters } = this.state;
+    const { mapProps, getClusters, center, zoom } = this.state;
     const clusteredMarkers = mapProps && getClusters
       ? getClusters(mapProps)
       : [];
@@ -68,7 +108,10 @@ class SimpleMap extends Component {
           bootstrapURLKeys={{ key: 'AIzaSyBu5nZKbeK-WHQ70oqOWo-_4VmwOwKP9YQ' }}
           defaultCenter={susolvkaCoords}
           defaultZoom={this.props.zoom}
-          onChange={this.onChange}
+          onChange={this.handleChange}
+          onChildClick={this.handleChildClick}
+          center={center}
+          zoom={zoom}
         >
           {this.renderMarkers(clusteredMarkers)}
         </GoogleMapReact>
@@ -77,4 +120,4 @@ class SimpleMap extends Component {
   }
 }
 
-export default SimpleMap;
+export default GoogleMap;
